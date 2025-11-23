@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, User, LogOut, Calendar, TrendingUp, Users } from 'lucide-react';
+import { Trophy, User, LogOut, Calendar, TrendingUp, Users, Shield, CheckCircle, XCircle, Edit2 } from 'lucide-react';
 
 export default function TennisLadderApp() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -8,15 +8,20 @@ export default function TennisLadderApp() {
   
   // Mock data for development - will be replaced with real storage
   const [players, setPlayers] = useState([
-    { id: 1, name: 'John Smith', rank: 1, gender: 'mens', wins: 5, losses: 1, phone: '555-0101', email: 'john@example.com', lastMatch: new Date().toISOString() },
-    { id: 2, name: 'Mike Johnson', rank: 2, gender: 'mens', wins: 4, losses: 2, phone: '555-0102', email: 'mike@example.com', lastMatch: new Date().toISOString() },
-    { id: 3, name: 'Tom Wilson', rank: 3, gender: 'mens', wins: 3, losses: 3, phone: '555-0103', email: 'tom@example.com', lastMatch: new Date().toISOString() },
-    { id: 4, name: 'Sarah Davis', rank: 1, gender: 'womens', wins: 6, losses: 0, phone: '555-0201', email: 'sarah@example.com', lastMatch: new Date().toISOString() },
-    { id: 5, name: 'Emma Brown', rank: 2, gender: 'womens', wins: 4, losses: 2, phone: '555-0202', email: 'emma@example.com', lastMatch: new Date().toISOString() },
+    { id: 1, name: 'John Smith', rank: 1, gender: 'mens', wins: 5, losses: 1, phone: '555-0101', email: 'john@example.com', lastMatch: new Date().toISOString(), isAdmin: false },
+    { id: 2, name: 'Mike Johnson', rank: 2, gender: 'mens', wins: 4, losses: 2, phone: '555-0102', email: 'mike@example.com', lastMatch: new Date().toISOString(), isAdmin: false },
+    { id: 3, name: 'Tom Wilson', rank: 3, gender: 'mens', wins: 3, losses: 3, phone: '555-0103', email: 'tom@example.com', lastMatch: new Date().toISOString(), isAdmin: false },
+    { id: 4, name: 'Sarah Davis', rank: 1, gender: 'womens', wins: 6, losses: 0, phone: '555-0201', email: 'sarah@example.com', lastMatch: new Date().toISOString(), isAdmin: false },
+    { id: 5, name: 'Emma Brown', rank: 2, gender: 'womens', wins: 4, losses: 2, phone: '555-0202', email: 'emma@example.com', lastMatch: new Date().toISOString(), isAdmin: false },
+    { id: 999, name: 'Admin User', rank: null, gender: 'mens', wins: 0, losses: 0, phone: '555-9999', email: 'admin@example.com', lastMatch: new Date().toISOString(), isAdmin: true },
   ]);
 
   const [challenges, setChallenges] = useState([]);
   const [matches, setMatches] = useState([]);
+  const [pendingRegistrations, setPendingRegistrations] = useState([
+    { id: 1001, name: 'David Lee', email: 'david@example.com', phone: '555-1001', gender: 'mens', submittedAt: new Date().toISOString() },
+    { id: 1002, name: 'Lisa Chen', email: 'lisa@example.com', phone: '555-1002', gender: 'womens', submittedAt: new Date().toISOString() },
+  ]);
 
   // Login Component
   const LoginView = () => {
@@ -38,8 +43,24 @@ export default function TennisLadderApp() {
     };
 
     const handleRegister = () => {
-      alert('Registration submitted! In production, this would be sent to admin for approval.');
+      if (!registerData.name || !registerData.email || !registerData.phone) {
+        alert('Please fill in all required fields');
+        return;
+      }
+      
+      const newRegistration = {
+        id: Date.now(),
+        name: registerData.name,
+        email: registerData.email,
+        phone: registerData.phone,
+        gender: registerData.gender,
+        submittedAt: new Date().toISOString()
+      };
+      
+      setPendingRegistrations([...pendingRegistrations, newRegistration]);
+      alert('Registration submitted! An admin will review your application soon.');
       setIsRegistering(false);
+      setRegisterData({ name: '', email: '', password: '', phone: '', gender: 'mens' });
     };
 
     if (isRegistering) {
@@ -172,7 +193,294 @@ export default function TennisLadderApp() {
           </div>
           
           <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-gray-600">
-            <strong>Demo:</strong> Use john@example.com to login
+            <strong>Demo:</strong> Use john@example.com to login as player<br />
+            <strong>Admin:</strong> Use admin@example.com to login as admin
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Admin Dashboard Component
+  const AdminDashboard = () => {
+    const [editingPlayer, setEditingPlayer] = useState(null);
+    const [newRank, setNewRank] = useState('');
+    const [adjustmentNote, setAdjustmentNote] = useState('');
+
+    const handleApproveRegistration = (registration) => {
+      const ladderPlayers = players.filter(p => p.gender === registration.gender && p.rank !== null);
+      const newRank = ladderPlayers.length + 1;
+      
+      const newPlayer = {
+        id: registration.id,
+        name: registration.name,
+        email: registration.email,
+        phone: registration.phone,
+        gender: registration.gender,
+        rank: newRank,
+        wins: 0,
+        losses: 0,
+        lastMatch: new Date().toISOString(),
+        isAdmin: false
+      };
+      
+      setPlayers([...players, newPlayer]);
+      setPendingRegistrations(pendingRegistrations.filter(r => r.id !== registration.id));
+      alert(`${registration.name} approved and added to ${registration.gender === 'mens' ? "Men's" : "Women's"} ladder at rank #${newRank}`);
+    };
+
+    const handleRejectRegistration = (registration) => {
+      if (window.confirm(`Are you sure you want to reject ${registration.name}'s registration?`)) {
+        setPendingRegistrations(pendingRegistrations.filter(r => r.id !== registration.id));
+        alert(`${registration.name}'s registration has been rejected.`);
+      }
+    };
+
+    const handleManualRankAdjustment = () => {
+      if (!editingPlayer || !newRank || !adjustmentNote) {
+        alert('Please fill in all fields');
+        return;
+      }
+
+      const rankNum = parseInt(newRank);
+      if (rankNum < 1 || isNaN(rankNum)) {
+        alert('Please enter a valid rank number');
+        return;
+      }
+
+      const updatedPlayers = players.map(p => {
+        if (p.id === editingPlayer.id) {
+          return { ...p, rank: rankNum };
+        }
+        return p;
+      }).sort((a, b) => {
+        if (a.gender !== b.gender) return 0;
+        return a.rank - b.rank;
+      });
+
+      setPlayers(updatedPlayers);
+      alert(`${editingPlayer.name}'s rank adjusted to #${rankNum}. Reason: ${adjustmentNote}`);
+      setEditingPlayer(null);
+      setNewRank('');
+      setAdjustmentNote('');
+    };
+
+    return (
+      <div className="space-y-6">
+        {/* Pending Registrations */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <Shield className="text-blue-600" size={28} />
+            Pending Registrations
+            {pendingRegistrations.length > 0 && (
+              <span className="bg-red-500 text-white text-sm px-2 py-1 rounded-full">
+                {pendingRegistrations.length}
+              </span>
+            )}
+          </h2>
+          
+          {pendingRegistrations.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">No pending registrations</p>
+          ) : (
+            <div className="space-y-3">
+              {pendingRegistrations.map((reg) => (
+                <div key={reg.id} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex justify-between items-start flex-wrap gap-3">
+                    <div>
+                      <h3 className="font-semibold text-lg text-gray-800">{reg.name}</h3>
+                      <p className="text-sm text-gray-600">Email: {reg.email}</p>
+                      <p className="text-sm text-gray-600">Phone: {reg.phone}</p>
+                      <p className="text-sm text-gray-600">
+                        Ladder: {reg.gender === 'mens' ? "Men's" : "Women's"}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Submitted: {new Date(reg.submittedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleApproveRegistration(reg)}
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center gap-1"
+                      >
+                        <CheckCircle size={16} />
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleRejectRegistration(reg)}
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center gap-1"
+                      >
+                        <XCircle size={16} />
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Manual Rank Adjustments */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <Edit2 className="text-purple-600" size={28} />
+            Manual Rank Adjustments
+          </h2>
+          
+          {editingPlayer ? (
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="font-semibold text-gray-800">Adjusting: {editingPlayer.name}</p>
+                <p className="text-sm text-gray-600">Current Rank: #{editingPlayer.rank}</p>
+                <p className="text-sm text-gray-600">Ladder: {editingPlayer.gender === 'mens' ? "Men's" : "Women's"}</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">New Rank</label>
+                <input
+                  type="number"
+                  min="1"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  value={newRank}
+                  onChange={(e) => setNewRank(e.target.value)}
+                  placeholder="Enter new rank number"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Reason for Adjustment</label>
+                <textarea
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  value={adjustmentNote}
+                  onChange={(e) => setAdjustmentNote(e.target.value)}
+                  placeholder="E.g., Resolved dispute, corrected error, etc."
+                  rows="3"
+                />
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={handleManualRankAdjustment}
+                  className="flex-1 bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors"
+                >
+                  Confirm Adjustment
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingPlayer(null);
+                    setNewRank('');
+                    setAdjustmentNote('');
+                  }}
+                  className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-400 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p className="text-gray-600 mb-4">Select a player to adjust their ranking:</p>
+              
+              <div className="space-y-2">
+                <h3 className="font-semibold text-gray-700">Men's Ladder</h3>
+                {players
+                  .filter(p => p.gender === 'mens' && p.rank !== null)
+                  .sort((a, b) => a.rank - b.rank)
+                  .map((player) => (
+                    <div key={player.id} className="flex justify-between items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
+                      <div>
+                        <span className="font-semibold">#{player.rank}</span>
+                        <span className="ml-3">{player.name}</span>
+                      </div>
+                      <button
+                        onClick={() => setEditingPlayer(player)}
+                        className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 transition-colors"
+                      >
+                        Adjust Rank
+                      </button>
+                    </div>
+                  ))}
+                
+                <h3 className="font-semibold text-gray-700 mt-4">Women's Ladder</h3>
+                {players
+                  .filter(p => p.gender === 'womens' && p.rank !== null)
+                  .sort((a, b) => a.rank - b.rank)
+                  .map((player) => (
+                    <div key={player.id} className="flex justify-between items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
+                      <div>
+                        <span className="font-semibold">#{player.rank}</span>
+                        <span className="ml-3">{player.name}</span>
+                      </div>
+                      <button
+                        onClick={() => setEditingPlayer(player)}
+                        className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 transition-colors"
+                      >
+                        Adjust Rank
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* All Matches Overview */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Recent Matches</h2>
+          {matches.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">No matches played yet</p>
+          ) : (
+            <div className="space-y-2">
+              {matches.slice(-10).reverse().map((match) => (
+                <div key={match.id} className="p-3 border border-gray-200 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-semibold text-gray-800">
+                        {match.winner.name} defeated {match.loser.name}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Score: {match.score} • {match.winner.gender === 'mens' ? "Men's" : "Women's"} Ladder
+                      </p>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {new Date(match.date).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Statistics Overview */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Statistics Overview</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-blue-50 rounded-lg p-4">
+              <p className="text-sm text-gray-600">Total Players</p>
+              <p className="text-3xl font-bold text-blue-600">
+                {players.filter(p => p.rank !== null).length}
+              </p>
+            </div>
+            <div className="bg-green-50 rounded-lg p-4">
+              <p className="text-sm text-gray-600">Men's Ladder</p>
+              <p className="text-3xl font-bold text-green-600">
+                {players.filter(p => p.gender === 'mens' && p.rank !== null).length}
+              </p>
+            </div>
+            <div className="bg-pink-50 rounded-lg p-4">
+              <p className="text-sm text-gray-600">Women's Ladder</p>
+              <p className="text-3xl font-bold text-pink-600">
+                {players.filter(p => p.gender === 'womens' && p.rank !== null).length}
+              </p>
+            </div>
+            <div className="bg-purple-50 rounded-lg p-4">
+              <p className="text-sm text-gray-600">Total Matches</p>
+              <p className="text-3xl font-bold text-purple-600">
+                {matches.length}
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -602,6 +910,18 @@ export default function TennisLadderApp() {
                 Profile
               </button>
               
+              {currentUser?.isAdmin && (
+                <button
+                  onClick={() => setView('admin')}
+                  className={`px-3 py-2 rounded-lg font-medium transition-colors text-sm ${
+                    view === 'admin' ? 'bg-blue-600 text-white' : 'text-blue-700 hover:bg-blue-50'
+                  }`}
+                >
+                  <Shield size={18} className="inline mr-1" />
+                  Admin
+                </button>
+              )}
+              
               <button
                 onClick={() => {
                   setCurrentUser(null);
@@ -622,6 +942,7 @@ export default function TennisLadderApp() {
         {view === 'challenges' && <ChallengesView />}
         {view === 'profile' && <ProfileView />}
         {view === 'reportMatch' && <ReportMatchView />}
+        {view === 'admin' && <AdminDashboard />}
       </main>
     </div>
   );
